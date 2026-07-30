@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Crop Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:          #eef2f7;
+      --surface:     #ffffff;
+      --surface-2:   #f5f8fc;
+      --surface-3:   #e8eef8;
+      --text:        #0d1b2e;
+      --muted:       #5e6e85;
+      --muted-2:     #94a3b8;
+      --line:        #dde4ef;
+      --accent:      #2563eb;
+      --accent-lt:   #3b82f6;
+      --accent-h:    #1d4ed8;
+      --accent-glow: rgba(37,99,235,.20);
+      --ok:          #059669;
+      --err:         #dc2626;
+      --sh-sm:  0 1px 3px rgba(15,30,60,.08), 0 1px 2px rgba(15,30,60,.05);
+      --sh-md:  0 4px 14px rgba(15,30,60,.10), 0 2px 6px rgba(15,30,60,.06);
+      --sh-lg:  0 12px 40px rgba(15,30,60,.14), 0 4px 12px rgba(15,30,60,.08);
+      --ck-a: #d6e2f0;
+      --ck-b: #e2ecf7;
+      --tr:      180ms cubic-bezier(.4,0,.2,1);
+      --tr-fast:  80ms cubic-bezier(.4,0,.2,1);
+    }
+    [data-theme="dark"] {
+      --bg:          #0b0f17;
+      --surface:     #141924;
+      --surface-2:   #1a2030;
+      --surface-3:   #1f2840;
+      --text:        #e2e8f0;
+      --muted:       #7c8fa6;
+      --muted-2:     #4a5a72;
+      --line:        #252f42;
+      --accent:      #3b82f6;
+      --accent-lt:   #60a5fa;
+      --accent-h:    #2563eb;
+      --accent-glow: rgba(59,130,246,.25);
+      --ok:          #10b981;
+      --err:         #f87171;
+      --sh-sm:  0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+      --sh-md:  0 4px 14px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.30);
+      --sh-lg:  0 12px 40px rgba(0,0,0,.55), 0 4px 12px rgba(0,0,0,.40);
+      --ck-a: #131b2b;
+      --ck-b: #0f1624;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      display: flex; flex-direction: column;
+      background: var(--bg); color: var(--text);
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--tr), color var(--tr);
+    }
+
+    /* ── TOPBAR ─────────────────────────────────────────── */
+    .topbar {
+      height: 52px; min-height: 52px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--sh-sm);
+      z-index: 30; flex-shrink: 0;
+      transition: background var(--tr), border-color var(--tr);
+    }
+    .logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(140deg, var(--accent), var(--accent-lt));
+      color: #fff; display: grid; place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px var(--accent-glow);
+      transition: box-shadow var(--tr);
+    }
+    .logo:hover { box-shadow: 0 4px 14px var(--accent-glow); }
+    .brand { font-weight: 800; font-size: 15px; letter-spacing: -.3px; white-space: nowrap; flex-shrink: 0; }
+    .filename {
+      flex: 1; min-width: 0; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+      padding: 0 8px; transition: color var(--tr);
+    }
+    .topbar-btn {
+      height: 34px; padding: 0 14px; border-radius: 9px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      font-family: inherit; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      transition: background var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
+    }
+    .topbar-btn:hover { background: var(--surface-3); }
+    .topbar-btn:active { opacity: .75; }
+    .topbar-btn.accent {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .topbar-btn.accent:hover { background: var(--accent-h); border-color: var(--accent-h); opacity: 1; }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 9px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--text); font-size: 16px; cursor: pointer;
+      display: grid; place-items: center; flex-shrink: 0;
+      transition: background var(--tr), border-color var(--tr), opacity var(--tr);
+    }
+    .icon-btn:hover { background: var(--surface-3); }
+    .icon-btn:active { opacity: .7; }
+
+    /* ── UPLOAD PANEL ───────────────────────────────────── */
+    #uploadPanel {
+      flex: 1; display: flex; align-items: center;
+      justify-content: center; padding: 24px; overflow: auto;
+      background:
+        radial-gradient(ellipse 55% 60% at 12% 55%, rgba(37,99,235,.07) 0%, transparent 100%),
+        radial-gradient(ellipse 45% 50% at 88% 25%, rgba(59,130,246,.05) 0%, transparent 100%);
+    }
+    .drop-zone {
+      width: 100%; max-width: 440px;
+      background: var(--surface);
+      border: 1.5px dashed var(--line);
+      border-radius: 24px; padding: 44px 36px 36px; text-align: center;
+      box-shadow: var(--sh-md);
+      transition: border-color var(--tr), box-shadow var(--tr), background var(--tr);
+    }
+    .drop-zone.drag-over {
+      border-color: var(--accent); border-style: solid;
+      box-shadow: var(--sh-md), 0 0 0 4px var(--accent-glow);
+    }
+    .drop-icon-wrap {
+      width: 76px; height: 76px;
+      background: linear-gradient(140deg, rgba(37,99,235,.09), rgba(59,130,246,.07));
+      border: 1px solid rgba(37,99,235,.13);
+      border-radius: 22px;
+      display: grid; place-items: center;
+      margin: 0 auto 26px; color: var(--accent);
+      transition: transform var(--tr), box-shadow var(--tr);
+    }
+    .drop-zone.drag-over .drop-icon-wrap {
+      transform: scale(1.06) translateY(-3px);
+      box-shadow: 0 10px 28px var(--accent-glow);
+    }
+    .drop-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; letter-spacing: -.4px; }
+    .drop-sub {
+      color: var(--muted); font-size: 14px; line-height: 1.6;
+      max-width: 30ch; margin: 0 auto 26px;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 7px;
+      height: 46px; padding: 0 26px; border-radius: 13px; border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-lt));
+      color: #fff; font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; box-shadow: 0 4px 16px var(--accent-glow);
+      transition: transform var(--tr-fast), box-shadow var(--tr), opacity var(--tr);
+    }
+    .btn-primary:hover { box-shadow: 0 7px 22px var(--accent-glow); transform: translateY(-1px); }
+    .btn-primary:active { opacity: .85; transform: translateY(0); }
+    .drop-hint {
+      color: var(--muted-2); font-size: 12px; font-weight: 500; margin-top: 10px;
+    }
+    .fmt-list {
+      display: flex; justify-content: center; gap: 6px; margin-top: 20px;
+    }
+    .fmt-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .5px;
+      color: var(--muted); background: var(--surface-2);
+      border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px;
+      transition: background var(--tr), border-color var(--tr);
+    }
+    .drop-err { display: none; color: var(--err); font-size: 13px; font-weight: 600; margin-top: 14px; }
+    .drop-err.show { display: block; }
+
+    /* ── EDITOR ─────────────────────────────────────────── */
+    #editor { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+    #editor.on { display: flex; }
+
+    /* ── VIEWER ─────────────────────────────────────────── */
+    .viewer {
+      flex: 1; overflow: auto;
+      background-color: var(--ck-b);
+      background-image:
+        linear-gradient(45deg, var(--ck-a) 25%, transparent 25%),
+        linear-gradient(-45deg,var(--ck-a) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--ck-a) 75%),
+        linear-gradient(-45deg,transparent 75%, var(--ck-a) 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      padding: 20px; -webkit-overflow-scrolling: touch;
+      transition: background-color var(--tr);
+    }
+    .viewer-wrap {
+      width: fit-content; margin: 0 auto;
+      position: relative; line-height: 0;
+      border-radius: 4px; overflow: hidden;
+      box-shadow: var(--sh-lg);
+    }
+    #pdfCanvas  { display: block; background: #fff; }
+    #ovCanvas   { position: absolute; inset: 0; display: block; touch-action: none; }
+
+    /* ── CONTROLS ───────────────────────────────────────── */
+    .controls {
+      flex-shrink: 0; background: var(--surface);
+      border-top: 1px solid var(--line);
+      padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 8px;
+      transition: background var(--tr), border-color var(--tr);
+    }
+    .crow { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+    .clabel {
+      font-size: 10px; font-weight: 700; color: var(--muted-2);
+      text-transform: uppercase; letter-spacing: .7px;
+      white-space: nowrap; flex-shrink: 0; min-width: 28px;
+    }
+    /* Pill group */
+    .pill {
+      display: inline-flex; align-items: center;
+      background: var(--surface-2); border: 1px solid var(--line);
+      border-radius: 12px; overflow: hidden;
+      transition: border-color var(--tr), background var(--tr);
+    }
+    .pb {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 40px; border: none; background: transparent;
+      color: var(--text); font-size: 18px; font-weight: 700;
+      font-family: inherit; cursor: pointer; flex-shrink: 0;
+      transition: background var(--tr-fast), opacity var(--tr);
+    }
+    .pb:hover:not(:disabled) { background: var(--surface-3); }
+    .pb:active:not(:disabled) { opacity: .7; }
+    .pb:disabled { opacity: .3; cursor: not-allowed; }
+    .psep { width: 1px; align-self: stretch; background: var(--line); flex-shrink: 0; }
+    .ptxt { padding: 0 10px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .ni {
+      background: transparent; border: none; color: var(--text);
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      text-align: center; height: 40px; padding: 0 2px;
+      -moz-appearance: textfield;
+    }
+    .ni:focus { outline: none; }
+    .ni::-webkit-inner-spin-button, .ni::-webkit-outer-spin-button { -webkit-appearance: none; }
+    /* Mode switch */
+    .mswitch {
+      display: inline-flex; background: var(--surface-2);
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      flex: 1; max-width: 220px;
+    }
+    .mbtn {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 5px; height: 40px; border: none; background: transparent;
+      color: var(--muted); font-size: 12px; font-weight: 700;
+      font-family: inherit; cursor: pointer;
+      transition: background var(--tr), color var(--tr);
+    }
+    .mbtn.on { background: linear-gradient(135deg, var(--accent), var(--accent-lt)); color: #fff; }
+    .mbtn svg { flex-shrink: 0; pointer-events: none; }
+
+    /* ── EXPORT ROW ──────────────────────────────────────── */
+    .nfield {
+      height: 40px; padding: 0 8px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--text); font-size: 14px; font-weight: 700;
+      font-family: inherit; text-align: center;
+      -moz-appearance: textfield;
+      transition: border-color var(--tr), box-shadow var(--tr), background var(--tr);
+    }
+    .nfield:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .nfield::-webkit-inner-spin-button, .nfield::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .fmtsel {
+      height: 40px; padding: 0 8px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--text); font-size: 13px; font-weight: 700;
+      font-family: inherit; cursor: pointer; flex-shrink: 0;
+      transition: border-color var(--tr), box-shadow var(--tr), background var(--tr);
+    }
+    .fmtsel:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .btn-export {
+      display: flex; align-items: center; gap: 6px;
+      height: 40px; padding: 0 18px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-lt));
+      color: #fff; font-size: 13px; font-weight: 700;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+      box-shadow: 0 2px 8px var(--accent-glow);
+      transition: transform var(--tr-fast), box-shadow var(--tr), opacity var(--tr);
+      margin-left: auto; flex-shrink: 0;
+    }
+    .btn-export:hover:not(:disabled) { box-shadow: 0 4px 14px var(--accent-glow); transform: translateY(-1px); }
+    .btn-export:active:not(:disabled) { opacity: .85; transform: translateY(0); }
+    .btn-export:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+    /* ── STATUS BAR ──────────────────────────────────────── */
+    .sbar {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      overflow: hidden; height: 18px;
+      transition: color var(--tr);
+    }
+    .sbar::before {
+      content: ''; flex-shrink: 0;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted-2);
+      transition: background var(--tr);
+    }
+    .sbar.ok  { color: var(--ok); }
+    .sbar.ok::before  { background: var(--ok); }
+    .sbar.err { color: var(--err); }
+    .sbar.err::before { background: var(--err); }
+
+    /* ── BUSY OVERLAY ────────────────────────────────────── */
+    #busy {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; place-items: center; z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    #busy.on { display: grid; animation: fadeIn 150ms ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .busy-card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 18px; padding: 28px 36px;
+      text-align: center; color: var(--muted);
+      font-size: 14px; font-weight: 600;
+      box-shadow: var(--sh-lg); min-width: 200px;
+    }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid var(--line); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .75s cubic-bezier(.5,0,.5,1) infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .topbar  { padding: 0 10px; gap: 6px; }
+      .brand   { font-size: 13px; }
+      .controls{ padding: 8px 10px 10px; gap: 6px; }
+      .crow    { gap: 6px; }
+      .btn-export { padding: 0 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <input type="file" id="fileInput" accept=".pdf,application/pdf" hidden />
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo" aria-hidden="true">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+        <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+        <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+      </svg>
+    </div>
+    <span class="brand">PDF Crop</span>
+    <span class="filename" id="fileName">Файл не выбран</span>
+    <button class="topbar-btn accent" id="openBtn" type="button">Открыть PDF</button>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Тема">🌙</button>
+  </header>
+
+  <!-- UPLOAD -->
+  <div id="uploadPanel">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon-wrap" aria-hidden="true">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="13" x2="15" y2="13"/>
+          <line x1="9" y1="17" x2="13" y2="17"/>
+        </svg>
+      </div>
+      <h1 class="drop-title">PDF Crop Studio</h1>
+      <p  class="drop-sub">Обрезайте любую область страницы и сохраняйте в нужном формате</p>
+      <button class="btn-primary" id="openBtnMain" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Выбрать PDF файл
+      </button>
+      <p class="drop-hint">или перетащите файл сюда</p>
+      <div class="fmt-list" aria-hidden="true">
+        <span class="fmt-badge">JPG</span>
+        <span class="fmt-badge">PNG</span>
+        <span class="fmt-badge">WebP</span>
+      </div>
+      <div class="drop-err" id="dropErr" role="alert"></div>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor">
+    <div class="viewer" id="viewer">
+      <div class="viewer-wrap" id="vwrap">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="ovCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="controls">
+      <!-- Row 1: nav + mode -->
+      <div class="crow">
+        <span class="clabel">Стр.</span>
+        <div class="pill">
+          <button class="pb" id="prevBtn" type="button" aria-label="Назад" disabled>‹</button>
+          <div class="psep"></div>
+          <input class="ni" id="pageIn" type="number" min="1" value="1" style="width:44px" />
+          <div class="psep"></div>
+          <span class="ptxt">/ <span id="pageTotal">1</span></span>
+          <div class="psep"></div>
+          <button class="pb" id="nextBtn" type="button" aria-label="Вперёд" disabled>›</button>
+        </div>
+        <div class="mswitch">
+          <button class="mbtn on" id="modePan" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/>
+              <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+            </svg>
+            Перемещение
+          </button>
+          <button class="mbtn" id="modeCrop" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <polyline points="6 2 6 6 2 6"/><polyline points="18 2 18 6 22 6"/>
+              <polyline points="6 22 6 18 2 18"/><polyline points="18 22 18 18 22 18"/>
+              <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+            Обрезка
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2: zoom -->
+      <div class="crow">
+        <span class="clabel">Zoom</span>
+        <div class="pill" style="flex:1;max-width:280px">
+          <button class="pb" id="zoomOut" type="button" aria-label="−" style="font-size:20px">−</button>
+          <div class="psep"></div>
+          <input class="ni" id="zoomIn2" type="number" min="10" max="500" value="100" style="width:50px" />
+          <span class="ptxt">%</span>
+          <div class="psep"></div>
+          <button class="pb" id="zoomInBtn" type="button" aria-label="+" style="font-size:20px">+</button>
+          <div class="psep"></div>
+          <button class="pb" id="zoomFit" type="button" title="По ширине" style="width:44px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 3: export -->
+      <div class="crow">
+        <span class="clabel" style="min-width:0">Вых.</span>
+        <input class="nfield" id="outW" type="number" value="4000" min="400" max="20000" step="100"
+               style="width:72px" title="Ширина px" />
+        <span class="clabel" style="min-width:0">px</span>
+        <select class="fmtsel" id="outFmt">
+          <option value="jpeg">JPG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WebP</option>
+        </select>
+        <button class="btn-export" id="exportBtn" type="button" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Экспорт
+        </button>
+      </div>
+
+      <div class="sbar" id="sbar" role="status" aria-live="polite">Загрузите PDF для начала работы</div>
+    </div>
+  </div>
+
+  <!-- BUSY -->
+  <div id="busy">
+    <div class="busy-card">
+      <div class="spinner"></div>
+      <div id="busyTxt">Загрузка...</div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "integrity": {
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs": "sha256-iVxywzLb1gigeuVAA+XkJ0HFZq3lLdvSoAyOV/+jXZ0="
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
+    // Worker is spawned internally by pdf.js — SRI cannot be applied to WorkerSrc
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+
+    const ZOOM_STEP = 0.15;
+    const ZOOM_MIN  = 0.10;
+    const ZOOM_MAX  = 5.00;
+    const HR        = 6;      // handle draw radius
+    const HIT       = 14;     // handle hit radius
+    const MIN_SEL   = 12;     // min selection px
+    const HANDLES   = ['nw','n','ne','e','se','s','sw','w'];
+    const CUR = {nw:'nw-resize',n:'n-resize',ne:'ne-resize',e:'e-resize',
+                 se:'se-resize',s:'s-resize',sw:'sw-resize',w:'w-resize'};
+
+    class App {
+      constructor() {
+        this.pdf        = null;
+        this.page       = null;
+        this.curPage    = 1;
+        this.totalPages = 0;
+        this.scale      = 1.0;   // viewScale
+        this.pgW        = 0;     // unscaled PDF width
+        this.pgH        = 0;     // unscaled PDF height
+        this.mode       = 'pan';
+        this.sel        = null;  // {x,y,w,h} in CSS px on overlay
+        this.renderTask = null;
+        this.dpr        = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Pointer state
+        this.ptr  = { down:false, type:null, ox:0, oy:0, orig:null };
+        this.pan  = { down:false, sx:0, sy:0, sl:0, st:0 };
+        this.pinch= { on:false, d0:0, s0:1 };
+
+        this._grab();
+        this._events();
+        this._theme();
+      }
+
+      /* ── element shortcuts ─────────────────────────────── */
+      _grab() {
+        const g = id => document.getElementById(id);
+        this.fileInput= g('fileInput');
+        this.upload   = g('uploadPanel');
+        this.editor   = g('editor');
+        this.dropZone = g('dropZone');
+        this.dropErr  = g('dropErr');
+        this.fileNameEl=g('fileName');
+        this.pdfC     = g('pdfCanvas');
+        this.pdfCtx   = this.pdfC.getContext('2d');
+        this.ovC      = g('ovCanvas');
+        this.ovCtx    = this.ovC.getContext('2d');
+        this.viewer   = g('viewer');
+        this.vwrap    = g('vwrap');
+        this.prevBtn  = g('prevBtn');
+        this.nextBtn  = g('nextBtn');
+        this.pageIn   = g('pageIn');
+        this.pageTotal= g('pageTotal');
+        this.zoomIn2  = g('zoomIn2');
+        this.exportBtn= g('exportBtn');
+        this.sbar     = g('sbar');
+        this.busy     = g('busy');
+        this.busyTxt  = g('busyTxt');
+      }
+
+      /* ── events ────────────────────────────────────────── */
+      _events() {
+        const g = id => document.getElementById(id);
+
+        // open file
+        g('openBtn').onclick     = () => this.fileInput.click();
+        g('openBtnMain').onclick = () => this.fileInput.click();
+        this.fileInput.onchange  = e => {
+          const f = e.target.files?.[0];
+          if (f) this._load(f);
+          this.fileInput.value = '';
+        };
+
+        // drag & drop (whole window)
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', e => {
+          e.preventDefault();
+          const f = e.dataTransfer?.files?.[0];
+          if (f) this._load(f);
+        });
+        this.dropZone.addEventListener('dragover',  () => this.dropZone.classList.add('drag-over'));
+        this.dropZone.addEventListener('dragleave', () => this.dropZone.classList.remove('drag-over'));
+        this.dropZone.addEventListener('drop',      () => this.dropZone.classList.remove('drag-over'));
+
+        // page nav
+        this.prevBtn.onclick = () => this._goPage(this.curPage - 1);
+        this.nextBtn.onclick = () => this._goPage(this.curPage + 1);
+        this.pageIn.addEventListener('change', () => {
+          const n = parseInt(this.pageIn.value, 10);
+          if (!isNaN(n)) this._goPage(n);
+        });
+
+        // zoom
+        g('zoomOut').onclick   = () => this._dZoom(-ZOOM_STEP);
+        g('zoomInBtn').onclick = () => this._dZoom(+ZOOM_STEP);
+        g('zoomFit').onclick   = () => this._fitW();
+        this.zoomIn2.addEventListener('change', () => {
+          const v = parseInt(this.zoomIn2.value, 10);
+          if (!isNaN(v)) this._setZoom(v / 100, true);
+        });
+
+        // mode
+        g('modePan').onclick  = () => this._setMode('pan');
+        g('modeCrop').onclick = () => this._setMode('crop');
+
+        // export
+        this.exportBtn.onclick = () => this._export();
+
+        // theme
+        g('themeBtn').onclick = () => this._applyTheme(
+          document.documentElement.dataset.theme !== 'dark'
+        );
+
+        // keyboard
+        window.addEventListener('keydown', e => {
+          if (['INPUT','SELECT'].includes(e.target.tagName)) return;
+          if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   this._goPage(this.curPage - 1);
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  this._goPage(this.curPage + 1);
+          if (e.key === 'Escape') { this.sel = null; this._drawOv(); this._updateUI(); }
+        });
+
+        // overlay pointer
+        const ov = this.ovC;
+        ov.addEventListener('pointerdown',  e => this._pDown(e));
+        ov.addEventListener('pointermove',  e => this._pMove(e));
+        ov.addEventListener('pointerup',    e => this._pUp(e));
+        ov.addEventListener('pointercancel',e => this._pUp(e));
+
+        // pinch zoom (touch)
+        ov.addEventListener('touchstart', e => this._tStart(e), { passive:false });
+        ov.addEventListener('touchmove',  e => this._tMove(e),  { passive:false });
+        ov.addEventListener('touchend',   () => { this.pinch.on = false; });
+      }
+
+
+      /* ── theme ─────────────────────────────────────────── */
+      _theme() {
+        let saved;
+        try { saved = localStorage.getItem('pdfcrop-theme'); } catch(_) {}
+        const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme:dark)').matches;
+        this._applyTheme(dark);
+      }
+      _applyTheme(dark) {
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.getElementById('themeBtn').textContent = dark ? '☀️' : '🌙';
+        try { localStorage.setItem('pdfcrop-theme', dark ? 'dark' : 'light'); } catch(_) {}
+      }
+
+      /* ── file load ─────────────────────────────────────── */
+      async _load(file) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+          this._errDrop('Пожалуйста, выберите PDF файл'); return;
+        }
+        const MAX_MB = 100;
+        if (file.size > MAX_MB * 1024 * 1024) {
+          this._errDrop(`Файл слишком большой (максимум ${MAX_MB} МБ)`); return;
+        }
+        this._errDrop('');
+        this._busy('Загрузка PDF…');
+        try {
+          const buf = await file.arrayBuffer();
+          const doc = await pdfjs.getDocument({ data: buf }).promise;
+          this.pdf        = doc;
+          this.totalPages = doc.numPages;
+          this.curPage    = 1;
+          this.sel        = null;
+          this.fileNameEl.textContent = file.name;
+          document.title  = `PDF Crop — ${file.name}`;
+          this.upload.style.display = 'none';
+          this.editor.classList.add('on');
+          await this._render(1, true);
+          this._status('PDF загружен. Переключитесь в режим «Обрезка» и выделите область.');
+        } catch(err) {
+          console.error(err);
+          this._errDrop('Не удалось открыть PDF — файл повреждён или защищён.');
+          this.upload.style.display = '';
+          this.editor.classList.remove('on');
+        } finally { this._unbusy(); }
+      }
+
+      /* ── render page ───────────────────────────────────── */
+      async _render(n, fitW = false) {
+        if (!this.pdf) return;
+        n = Math.max(1, Math.min(n, this.totalPages));
+        if (this.renderTask) {
+          try { this.renderTask.cancel(); } catch(_) {}
+          this.renderTask = null;
+        }
+        this.curPage = n;
+        this._navUI();
+
+        const page = await this.pdf.getPage(n);
+        this.page  = page;
+        const vp1  = page.getViewport({ scale: 1 });
+        this.pgW   = vp1.width;
+        this.pgH   = vp1.height;
+
+        if (fitW) {
+          const avail = this.viewer.clientWidth - 32;
+          this.scale  = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, avail / this.pgW));
+        }
+        await this._paint(page);
+      }
+
+      async _paint(page) {
+        const vpScale = this.scale * this.dpr;
+        const vp      = page.getViewport({ scale: vpScale });
+        const cssW    = Math.round(vp.width  / this.dpr);
+        const cssH    = Math.round(vp.height / this.dpr);
+
+        // PDF canvas (hi-res)
+        this.pdfC.width  = Math.round(vp.width);
+        this.pdfC.height = Math.round(vp.height);
+        this.pdfC.style.width  = cssW + 'px';
+        this.pdfC.style.height = cssH + 'px';
+
+        // Overlay canvas (logical px, 1:1)
+        this.ovC.width  = cssW;
+        this.ovC.height = cssH;
+        this.ovC.style.width  = cssW + 'px';
+        this.ovC.style.height = cssH + 'px';
+
+        this._zoomUI();
+
+        const task = page.render({ canvasContext: this.pdfCtx, viewport: vp });
+        this.renderTask = task;
+        try { await task.promise; }
+        catch(e) { if (e?.name !== 'RenderingCancelledException') console.error(e); return; }
+        this.renderTask = null;
+
+        if (this.sel) { this.sel = this._clamp(this.sel); }
+        this._drawOv();
+        this._updateUI();
+      }
+
+
+      /* ── navigation ────────────────────────────────────── */
+      async _goPage(n) {
+        if (!this.pdf) return;
+        n = Math.max(1, Math.min(this.totalPages, n));
+        if (n === this.curPage) return;
+        this.sel = null;
+        this._busy('Загрузка страницы…');
+        try {
+          await this._render(n);
+          this.viewer.scrollTo({ top:0, behavior:'smooth' });
+          this._status(`Страница ${n} из ${this.totalPages}`);
+        } finally { this._unbusy(); }
+      }
+
+      /* ── zoom ──────────────────────────────────────────── */
+      _dZoom(delta) { this._setZoom(this.scale + delta, true); }
+      _fitW() {
+        if (!this.pgW) return;
+        this._setZoom((this.viewer.clientWidth - 32) / this.pgW, true);
+      }
+
+      _setZoom(s, animate = false) {
+        s = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, s));
+        if (!this.page) { this.scale = s; this._zoomUI(); return; }
+
+        // convert selection to PDF coords so it survives zoom
+        let pSel = null;
+        if (this.sel) pSel = {
+          x: this.sel.x / this.scale, y: this.sel.y / this.scale,
+          w: this.sel.w / this.scale, h: this.sel.h / this.scale,
+        };
+
+        // keep viewport center
+        const v   = this.viewer;
+        const rx  = (v.scrollLeft + v.clientWidth  / 2) / (v.scrollWidth  || 1);
+        const ry  = (v.scrollTop  + v.clientHeight / 2) / (v.scrollHeight || 1);
+
+        this.scale = s;
+        this._paint(this.page).then(() => {
+          v.scrollLeft = v.scrollWidth  * rx - v.clientWidth  / 2;
+          v.scrollTop  = v.scrollHeight * ry - v.clientHeight / 2;
+          if (pSel) {
+            this.sel = this._clamp({
+              x: pSel.x * this.scale, y: pSel.y * this.scale,
+              w: pSel.w * this.scale, h: pSel.h * this.scale,
+            });
+            this._drawOv();
+            this._updateUI();
+          }
+        });
+      }
+
+      /* ── mode ──────────────────────────────────────────── */
+      _setMode(m) {
+        this.mode = m;
+        document.getElementById('modePan') .classList.toggle('on', m === 'pan');
+        document.getElementById('modeCrop').classList.toggle('on', m === 'crop');
+        this.ovC.style.cursor = m === 'crop' ? 'crosshair' : 'grab';
+      }
+
+      /* ── pointer helpers ───────────────────────────────── */
+      _xy(e) {
+        const r = this.ovC.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+
+      _pDown(e) {
+        if (e.pointerType === 'touch' && this.pinch.on) return;
+        e.preventDefault();
+        this.ovC.setPointerCapture(e.pointerId);
+        const { x, y } = this._xy(e);
+
+        if (this.mode === 'pan') {
+          this.pan = { down:true, sx:e.clientX, sy:e.clientY,
+                       sl:this.viewer.scrollLeft, st:this.viewer.scrollTop };
+          this.ovC.style.cursor = 'grabbing';
+          return;
+        }
+
+        // crop mode
+        if (this.sel) {
+          const h = this._hitH(x, y);
+          if (h) { this.ptr = { down:true, type:h, ox:x, oy:y, orig:{...this.sel} }; return; }
+          if (this._inSel(x, y)) {
+            this.ptr = { down:true, type:'move', ox:x, oy:y, orig:{...this.sel} };
+            this.ovC.style.cursor = 'move'; return;
+          }
+        }
+        this.sel = null;
+        this.ptr = { down:true, type:'new', ox:x, oy:y, orig:null };
+      }
+
+      _pMove(e) {
+        if (this.pinch.on) return;
+        const { x, y } = this._xy(e);
+        const cw = this.ovC.width, ch = this.ovC.height;
+
+        if (this.mode === 'pan') {
+          if (!this.pan.down) return;
+          this.viewer.scrollLeft = this.pan.sl - (e.clientX - this.pan.sx);
+          this.viewer.scrollTop  = this.pan.st - (e.clientY - this.pan.sy);
+          return;
+        }
+
+        if (!this.ptr.down) {
+          if (this.sel) {
+            const h = this._hitH(x, y);
+            this.ovC.style.cursor = h ? CUR[h] : this._inSel(x,y) ? 'move' : 'crosshair';
+          } else { this.ovC.style.cursor = 'crosshair'; }
+          return;
+        }
+
+        const dx = x - this.ptr.ox, dy = y - this.ptr.oy;
+
+        if (this.ptr.type === 'new') {
+          const ox = Math.max(0, Math.min(this.ptr.ox, cw));
+          const oy = Math.max(0, Math.min(this.ptr.oy, ch));
+          const nx = Math.max(0, Math.min(x, cw));
+          const ny = Math.max(0, Math.min(y, ch));
+          this.sel = { x:Math.min(ox,nx), y:Math.min(oy,ny),
+                       w:Math.abs(nx-ox), h:Math.abs(ny-oy) };
+        } else if (this.ptr.type === 'move') {
+          const o = this.ptr.orig;
+          this.sel = { ...o,
+            x: Math.max(0, Math.min(o.x + dx, cw - o.w)),
+            y: Math.max(0, Math.min(o.y + dy, ch - o.h)),
+          };
+        } else {
+          this.sel = this._resize(this.ptr.type, dx, dy, this.ptr.orig, cw, ch);
+        }
+
+        this._drawOv();
+        if (this.sel && this.sel.w > 1 && this.sel.h > 1) {
+          const pw = Math.round(this.sel.w / this.scale);
+          const ph = Math.round(this.sel.h / this.scale);
+          this._status(`Выделено: ${pw} × ${ph} px (PDF)`);
+        }
+      }
+
+      _pUp(_e) {
+        const wasPan = this.mode === 'pan';
+        const wasNew = this.ptr.type === 'new';
+        this.pan.down  = false;
+        this.ptr.down  = false;
+        if (wasPan) { this.ovC.style.cursor = 'grab'; return; }
+        if (wasNew && this.sel && (this.sel.w < MIN_SEL || this.sel.h < MIN_SEL)) {
+          this.sel = null; this._drawOv();
+        }
+        this._updateUI();
+        if (this.sel) this.ovC.style.cursor = 'crosshair';
+      }
+
+      /* ── pinch zoom ────────────────────────────────────── */
+      _tStart(e) {
+        if (e.touches.length !== 2) return;
+        e.preventDefault();
+        this.pinch = { on:true, d0:this._td(e), s0:this.scale };
+      }
+      _tMove(e) {
+        if (!this.pinch.on || e.touches.length !== 2) return;
+        e.preventDefault();
+        this._setZoom(this.pinch.s0 * this._td(e) / this.pinch.d0);
+      }
+      _td(e) {
+        return Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                          e.touches[0].clientY - e.touches[1].clientY);
+      }
+
+
+      /* ── handles ───────────────────────────────────────── */
+      _hPos(sel) {
+        const { x,y,w,h } = sel;
+        return { nw:[x,y], n:[x+w/2,y], ne:[x+w,y], e:[x+w,y+h/2],
+                 se:[x+w,y+h], s:[x+w/2,y+h], sw:[x,y+h], w:[x,y+h/2] };
+      }
+      _hitH(mx, my) {
+        if (!this.sel) return null;
+        const pos = this._hPos(this.sel);
+        for (const id of HANDLES) {
+          const [hx,hy] = pos[id];
+          if (Math.hypot(mx-hx, my-hy) <= HIT) return id;
+        }
+        return null;
+      }
+      _inSel(mx, my) {
+        if (!this.sel) return false;
+        const { x,y,w,h } = this.sel;
+        return mx>=x && mx<=x+w && my>=y && my<=y+h;
+      }
+      _resize(handle, dx, dy, o, cw, ch) {
+        let { x,y,w,h } = o;
+        switch(handle) {
+          case 'nw': x+=dx; y+=dy; w-=dx; h-=dy; break;
+          case 'n':          y+=dy;         h-=dy; break;
+          case 'ne': w+=dx;  y+=dy;         h-=dy; break;
+          case 'e':  w+=dx;                        break;
+          case 'se': w+=dx;          h+=dy;        break;
+          case 's':                  h+=dy;        break;
+          case 'sw': x+=dx;  w-=dx;  h+=dy;        break;
+          case 'w':  x+=dx;  w-=dx;                break;
+        }
+        if (w < MIN_SEL) { if (['nw','w','sw'].includes(handle)) x = o.x + o.w - MIN_SEL; w = MIN_SEL; }
+        if (h < MIN_SEL) { if (['nw','n','ne'].includes(handle)) y = o.y + o.h - MIN_SEL; h = MIN_SEL; }
+        x = Math.max(0, Math.min(x, cw - w));
+        y = Math.max(0, Math.min(y, ch - h));
+        w = Math.min(w, cw - x);
+        h = Math.min(h, ch - y);
+        return { x,y,w,h };
+      }
+      _clamp(sel) {
+        const cw = this.ovC.width, ch = this.ovC.height;
+        const x  = Math.max(0, Math.min(sel.x, cw - MIN_SEL));
+        const y  = Math.max(0, Math.min(sel.y, ch - MIN_SEL));
+        const w  = Math.min(sel.w, cw - x);
+        const h  = Math.min(sel.h, ch - y);
+        return { x,y,w,h };
+      }
+
+      /* ── overlay drawing ───────────────────────────────── */
+      _drawOv() {
+        const ctx = this.ovCtx;
+        const cw  = this.ovC.width, ch = this.ovC.height;
+        ctx.clearRect(0, 0, cw, ch);
+        if (!this.sel || this.sel.w < 1 || this.sel.h < 1) return;
+
+        const { x,y,w,h } = this.sel;
+
+        // darken outside
+        ctx.fillStyle = 'rgba(0,0,0,.48)';
+        ctx.fillRect(0,0,cw,ch);
+        ctx.clearRect(x, y, w, h);
+
+        // border
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([5,4]);
+        ctx.strokeRect(x+.5, y+.5, w-1, h-1);
+        ctx.setLineDash([]);
+
+        // rule-of-thirds grid
+        ctx.strokeStyle = 'rgba(255,255,255,.22)';
+        ctx.lineWidth   = 1;
+        for (let i=1; i<3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(x + w*i/3, y); ctx.lineTo(x + w*i/3, y+h); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, y + h*i/3); ctx.lineTo(x+w, y + h*i/3); ctx.stroke();
+        }
+        ctx.restore();
+
+        // handles
+        const pos = this._hPos(this.sel);
+        for (const id of HANDLES) {
+          const [hx,hy] = pos[id];
+          ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+          ctx.fillStyle   = '#ffffff'; ctx.fill();
+          ctx.strokeStyle = 'rgba(11,114,255,.95)'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+
+      /* ── export ────────────────────────────────────────── */
+      async _export() {
+        if (!this.sel || !this.page) return;
+        const outW = parseInt(document.getElementById('outW').value, 10) || 4000;
+        const fmt  = document.getElementById('outFmt').value;
+
+        // selection → PDF units
+        const pX = this.sel.x / this.scale;
+        const pY = this.sel.y / this.scale;
+        const pW = this.sel.w / this.scale;
+        const pH = this.sel.h / this.scale;
+
+        const expScale = outW / pW;
+        const outH     = Math.round(pH * expScale);
+
+        this._busy('Экспорт…');
+        try {
+          // Render only the crop region directly — avoids allocating a full-page canvas
+          // at potentially huge scale (e.g. small selection + high outW = GBs of memory)
+          const vp = this.page.getViewport({
+            scale: expScale,
+            offsetX: -Math.round(pX * expScale),
+            offsetY: -Math.round(pY * expScale),
+          });
+          const crop = document.createElement('canvas');
+          crop.width  = outW;
+          crop.height = outH;
+          await this.page.render({ canvasContext: crop.getContext('2d'), viewport: vp }).promise;
+
+          const mime    = fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
+          const quality = fmt === 'png'  ? undefined : 0.95;
+          crop.toBlob(blob => {
+            if (!blob) { this._status('Ошибка создания файла', 'err'); return; }
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            const base = (this.fileNameEl.textContent || 'crop').replace(/\.pdf$/i,'');
+            const ext  = fmt === 'jpeg' ? 'jpg' : fmt;
+            a.href = url; a.download = `${base}_p${this.curPage}.${ext}`; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            this._status(`Сохранено: ${outW}×${outH} px (${ext.toUpperCase()})`, 'ok');
+          }, mime, quality);
+        } catch(err) {
+          console.error(err);
+          this._status('Ошибка экспорта. Попробуйте ещё раз.', 'err');
+        } finally { this._unbusy(); }
+      }
+
+
+      /* ── UI helpers ────────────────────────────────────── */
+      _updateUI() {
+        const ok = this.sel && this.sel.w >= MIN_SEL && this.sel.h >= MIN_SEL;
+        this.exportBtn.disabled = !ok;
+      }
+      _navUI() {
+        this.prevBtn.disabled   = this.curPage <= 1;
+        this.nextBtn.disabled   = this.curPage >= this.totalPages;
+        this.pageIn.value       = this.curPage;
+        this.pageIn.max         = this.totalPages;
+        this.pageTotal.textContent = this.totalPages;
+      }
+      _zoomUI() {
+        this.zoomIn2.value = Math.round(this.scale * 100);
+      }
+      _status(txt, cls = '') {
+        this.sbar.textContent = txt;
+        this.sbar.className   = 'sbar' + (cls ? ' ' + cls : '');
+      }
+      _busy(txt) {
+        this.busyTxt.textContent = txt || 'Загрузка…';
+        this.busy.classList.add('on');
+      }
+      _unbusy() { this.busy.classList.remove('on'); }
+      _errDrop(msg) {
+        this.dropErr.textContent = msg;
+        this.dropErr.classList.toggle('show', !!msg);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => new App());
+  </script>
+</body>
+</html>
